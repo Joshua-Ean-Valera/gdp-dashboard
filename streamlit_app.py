@@ -99,7 +99,7 @@ cipher_choice = st.sidebar.radio("Choose Encryption Method:", ["Vigenère Cipher
 
 if cipher_choice == "Vigenère Cipher":
     st.header("Vigenère Cipher Encryption")
-    alphabet = st.text_input("Enter Alphabet:", "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+    alphabet = st.text_input("Enter Alphabet:")
     key = st.text_input("Enter Key:")
     plaintext = st.text_input("Enter Plaintext:")
     if st.button("Encrypt"):
