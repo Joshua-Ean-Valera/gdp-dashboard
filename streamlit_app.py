@@ -77,10 +77,55 @@ def print_mod_expo(n):
             results.append(f"{result_str}")
     return pri_roots, results
 
+def pad_message(message, block_size=8, padding_char='_'):
+    padding_length = (block_size - len(message) % block_size) % block_size
+    return message + (padding_char * padding_length)
+    
+def remove_padding(message, padding_char='_'):
+    return message.rstrip(padding_char)
+    
+def xor_operation(block, key):
+    return [ord(b) ^ ord(k) for b, k in zip(block, key)]
+    
+def encrypt(text, key):
+    text = pad_message(text)
+    result = []
+    
+    for i in range(0, len(text), 8):
+        block = text[i:i+8]
+        encrypted_block = xor_operation(block, key)
+        result.extend(encrypted_block)
+        
+    return ' '.join(format(byte, '02X') for byte in result)
+    
+def decrypt(hex_text, key):
+    try:
+        hex_values = [int(h, 16) for h in hex_text.split()]
+    except ValueError:
+        return "Error: Invalid hex input for decryption"
+        
+    result = []
+    for i in range(0, len(hex_values), 8):
+        block = hex_values[i:i+8]
+        decrypted_block = ''.join(chr(b ^ ord(k)) for b, k in zip(block, key))
+        result.append(decrypted_block)
+        
+    return remove_padding(''.join(result))
+    
+def encrypt_decrypt(text, key, operation):
+    if len(key) != 8:
+        return "Error: Key must be exactly 8 characters"
+    if operation == 'encrypt':
+        return encrypt(text, key)
+    elif operation == 'decrypt':
+        return decrypt(text, key)
+    else:
+        return "Error: Invalid operation. Use 'encrypt' or 'decrypt' "
+    
 # Streamlit UI
 st.title("Encryption & Primitive Root Tool")
 
-cipher_choice = st.sidebar.radio("Choose Method:", ["Vigenère Cipher", "Caesar Cipher", "Primitive Root Calculation"])
+cipher_choice = st.sidebar.radio("Choose Method:", ["Vigenère Cipher", "Caesar Cipher", "Custom XOR Cipher", "Primitive Root Calculation"])
 
 if cipher_choice == "Vigenère Cipher":
     st.header("Vigenère Cipher Encryption")
@@ -100,25 +145,24 @@ elif cipher_choice == "Caesar Cipher":
     shift_keys = list(map(int, st.text_input("Enter Shift Keys (space-separated):").split()))
     operation = st.radio("Choose Operation:", ["Encrypt", "Decrypt"])
     if st.button("Process"):
-        if len(shift_keys) < 2 or len(shift_keys) > len(text):
-            st.write("Error: Shift keys length must be between 2 and the length of the text.")
-        else:
-            result_text = caesar_encrypt_decrypt(text, shift_keys, ifdecrypt=(operation == "Decrypt"))
-            st.write(f"### {operation}ed Message:", result_text)
+        result_text = caesar_encrypt_decrypt(text, shift_keys, ifdecrypt=(operation == "Decrypt"))
+        st.write(f"### {operation}ed Message:", result_text)
+
+elif cipher_choice == "Custom XOR Cipher":
+    st.header("Custom XOR Cipher")
+    text = st.text_input("Enter Text:")
+    key = st.text_input("Enter 8-Character Key:")
+    operation = st.radio("Choose Operation:", ["Encrypt", "Decrypt"])
+    if st.button("Process"):
+        result_text = encrypt_decrypt(text, key, operation.lower())
+        st.write(f"### {operation}ed Message:", result_text)
 
 elif cipher_choice == "Primitive Root Calculation":
     st.header("Primitive Root Calculation")
     n = st.number_input("Enter Prime Number:", min_value=2, step=1)
     g = st.number_input("Enter Possible Primitive Root:", min_value=1, step=1)
     if st.button("Check"):
-        if n < 2 or any(n % i == 0 for i in range(2, int(n ** 0.5) + 1)):
-            st.write(f"{n} is not a prime number!!")
-        else:
-            pri_roots, results = print_mod_expo(n)
-            for res in results:
-                st.write(res)
-            is_g_primitive = g in pri_roots
-            if is_g_primitive:
-                st.write(f"{g} is a primitive root of {n}. List of Primitive Roots: {pri_roots}")
-            else:
-                st.write(f"{g} is NOT a primitive root of {n}. List of Primitive Roots: {pri_roots}")
+        pri_roots, results = print_mod_expo(n)
+        for res in results:
+            st.write(res)
+        st.write(f"List of Primitive Roots: {pri_roots}")
