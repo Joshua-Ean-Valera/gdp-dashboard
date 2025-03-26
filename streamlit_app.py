@@ -1,151 +1,131 @@
 import streamlit as st
-import pandas as pd
-import math
-from pathlib import Path
 
-# Set the title and favicon that appear in the Browser's tab bar.
-st.set_page_config(
-    page_title='GDP dashboard',
-    page_icon=':earth_americas:', # This is an emoji shortcode. Could be a URL too.
-)
-
-# -----------------------------------------------------------------------------
-# Declare some useful functions.
-
-@st.cache_data
-def get_gdp_data():
-    """Grab GDP data from a CSV file.
-
-    This uses caching to avoid having to read the file every time. If we were
-    reading from an HTTP endpoint instead of a file, it's a good idea to set
-    a maximum age to the cache with the TTL argument: @st.cache_data(ttl='1d')
-    """
-
-    # Instead of a CSV on disk, you could read from an HTTP endpoint here too.
-    DATA_FILENAME = Path(__file__).parent/'data/gdp_data.csv'
-    raw_gdp_df = pd.read_csv(DATA_FILENAME)
-
-    MIN_YEAR = 1960
-    MAX_YEAR = 2022
-
-    # The data above has columns like:
-    # - Country Name
-    # - Country Code
-    # - [Stuff I don't care about]
-    # - GDP for 1960
-    # - GDP for 1961
-    # - GDP for 1962
-    # - ...
-    # - GDP for 2022
-    #
-    # ...but I want this instead:
-    # - Country Name
-    # - Country Code
-    # - Year
-    # - GDP
-    #
-    # So let's pivot all those year-columns into two: Year and GDP
-    gdp_df = raw_gdp_df.melt(
-        ['Country Code'],
-        [str(x) for x in range(MIN_YEAR, MAX_YEAR + 1)],
-        'Year',
-        'GDP',
-    )
-
-    # Convert years from string to integers
-    gdp_df['Year'] = pd.to_numeric(gdp_df['Year'])
-
-    return gdp_df
-
-gdp_df = get_gdp_data()
-
-# -----------------------------------------------------------------------------
-# Draw the actual page
-
-# Set the title that appears at the top of the page.
-'''
-# :earth_americas: GDP dashboard
-
-Browse GDP data from the [World Bank Open Data](https://data.worldbank.org/) website. As you'll
-notice, the data only goes to 2022 right now, and datapoints for certain years are often missing.
-But it's otherwise a great (and did I mention _free_?) source of data.
-'''
-
-# Add some spacing
-''
-''
-
-min_value = gdp_df['Year'].min()
-max_value = gdp_df['Year'].max()
-
-from_year, to_year = st.slider(
-    'Which years are you interested in?',
-    min_value=min_value,
-    max_value=max_value,
-    value=[min_value, max_value])
-
-countries = gdp_df['Country Code'].unique()
-
-if not len(countries):
-    st.warning("Select at least one country")
-
-selected_countries = st.multiselect(
-    'Which countries would you like to view?',
-    countries,
-    ['DEU', 'FRA', 'GBR', 'BRA', 'MEX', 'JPN'])
-
-''
-''
-''
-
-# Filter the data
-filtered_gdp_df = gdp_df[
-    (gdp_df['Country Code'].isin(selected_countries))
-    & (gdp_df['Year'] <= to_year)
-    & (from_year <= gdp_df['Year'])
-]
-
-st.header('GDP over time', divider='gray')
-
-''
-
-st.line_chart(
-    filtered_gdp_df,
-    x='Year',
-    y='GDP',
-    color='Country Code',
-)
-
-''
-''
-
-
-first_year = gdp_df[gdp_df['Year'] == from_year]
-last_year = gdp_df[gdp_df['Year'] == to_year]
-
-st.header(f'GDP in {to_year}', divider='gray')
-
-''
-
-cols = st.columns(4)
-
-for i, country in enumerate(selected_countries):
-    col = cols[i % len(cols)]
-
-    with col:
-        first_gdp = first_year[first_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
-        last_gdp = last_year[last_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
-
-        if math.isnan(first_gdp):
-            growth = 'n/a'
-            delta_color = 'off'
+def vigenere_encrypt(plaintext: str, key: str, alphabet: str) -> str:
+    if not alphabet:
+        raise ValueError("Alphabet cannot be empty")
+    if len(set(alphabet)) != len(alphabet):
+        raise ValueError("Alphabet must contain unique characters")
+    if not key:
+        raise ValueError("Key cannot be empty")
+    if not plaintext:
+        raise ValueError("Plaintext cannot be empty")
+    
+    alphabet_set = set(alphabet)
+    key = ''.join(c for c in key if c in alphabet_set)
+    
+    if not key:
+        raise ValueError("Key contains no valid characters")
+    
+    cipher_text = []
+    key_index = 0
+    
+    for char in plaintext:
+        if char in alphabet_set:
+            char_index = alphabet.index(char)
+            key_char = key[key_index % len(key)]
+            key_index += 1
+            key_val = alphabet.index(key_char)
+            new_index = (char_index + key_val) % len(alphabet)
+            cipher_text.append(alphabet[new_index])
         else:
-            growth = f'{last_gdp / first_gdp:,.2f}x'
-            delta_color = 'normal'
+            cipher_text.append(char)
+    
+    return ''.join(cipher_text)
 
-        st.metric(
-            label=f'{country} GDP',
-            value=f'{last_gdp:,.0f}B',
-            delta=growth,
-            delta_color=delta_color
-        )
+def caesar_encrypt_decrypt(text, shift_keys, ifdecrypt):
+    result = []
+    shift_keys_len = len(shift_keys)
+    
+    for i, char in enumerate(text):
+        if 32 <= ord(char) <= 126:
+            shift = shift_keys[i % shift_keys_len]
+            effective_shift = -shift if ifdecrypt else shift
+            shifted_char = chr((ord(char) - 32 + effective_shift) % 94 + 32)
+            result.append(shifted_char)
+        else:
+            result.append(char)
+    
+    return ''.join(result)
+
+def encrypt_decrypt(text, key, operation):
+    if len(key) != 8:
+        return "Error: Key must be exactly 8 characters"
+    if operation == 'encrypt':
+        return encrypt(text, key)
+    elif operation == 'decrypt':
+        return decrypt(text, key)
+    else:
+        return "Error: Invalid operation. Use 'encrypt' or 'decrypt'"
+
+def encrypt(text, key):
+    text = pad_message(text)
+    result = []
+    
+    for i in range(0, len(text), 8):
+        block = text[i:i+8]
+        encrypted_block = xor_operation(block, key)
+        result.extend(encrypted_block)
+    
+    return ' '.join(format(byte, '02X') for byte in result)
+
+def decrypt(hex_text, key):
+    try:
+        hex_values = [int(h, 16) for h in hex_text.split()]
+    except ValueError:
+        return "Error: Invalid hex input for decryption"
+        
+    result = []
+    for i in range(0, len(hex_values), 8):
+        block = hex_values[i:i+8]
+        decrypted_block = ''.join(chr(b ^ ord(k)) for b, k in zip(block, key))
+        result.append(decrypted_block)
+        
+    return remove_padding(''.join(result))
+
+def pad_message(message, block_size=8, padding_char='_'):
+    padding_length = (block_size - len(message) % block_size) % block_size
+    return message + (padding_char * padding_length)
+
+def remove_padding(message, padding_char='_'):
+    return message.rstrip(padding_char)
+
+def xor_operation(block, key):
+    return [ord(b) ^ ord(k) for b, k in zip(block, key)]
+
+# Streamlit UI
+st.title("Cipher Encryption Tool")
+
+cipher_choice = st.sidebar.radio("Choose Encryption Method:", ["Vigenère Cipher", "Caesar Cipher", "Primitive Root", "XOR Encryption"])
+
+if cipher_choice == "Vigenère Cipher":
+    st.header("Vigenère Cipher Encryption")
+    alphabet = st.text_input("Enter Alphabet:", "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+    key = st.text_input("Enter Key:")
+    plaintext = st.text_input("Enter Plaintext:")
+    if st.button("Encrypt"):
+        try:
+            encrypted_text = vigenere_encrypt(plaintext, key, alphabet)
+            st.write("### Encrypted Message:", encrypted_text)
+        except ValueError as e:
+            st.write("Error:", str(e))
+
+elif cipher_choice == "Caesar Cipher":
+    st.header("Caesar Cipher Encryption/Decryption")
+    text = st.text_input("Enter Text:")
+    shift_keys = list(map(int, st.text_input("Enter Shift Keys (space-separated):").split()))
+    operation = st.radio("Choose Operation:", ["Encrypt", "Decrypt"])
+    if st.button("Process"):
+        if len(shift_keys) < 2 or len(shift_keys) > len(text):
+            st.write("Error: Shift keys length must be between 2 and the length of the text.")
+        else:
+            result_text = caesar_encrypt_decrypt(text, shift_keys, ifdecrypt=(operation == "Decrypt"))
+            st.write(f"### {operation}ed Message:", result_text)
+
+elif cipher_choice == "XOR Encryption":
+    st.header("XOR Encryption")
+    text = st.text_input("Enter Text:")
+    key = st.text_input("Enter 8-character Key:")
+    operation = st.radio("Choose Operation:", ["Encrypt", "Decrypt"])
+    if st.button("Process"):
+        result = encrypt_decrypt(text, key, operation.lower())
+        st.write(f"### {operation}ed Message:", result)
