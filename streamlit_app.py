@@ -133,7 +133,7 @@ if cipher_choice == "Vigenère Cipher":
     key = st.text_input("Enter Key:")
     plaintext = st.text_input("Enter Plaintext:")
     if st.button("Encrypt"):
-        @@ -106,19 +121,11 @@
+    @@ -106,19 +121,11 @@
             result_text = caesar_encrypt_decrypt(text, shift_keys, ifdecrypt=(operation == "Decrypt"))
             st.write(f"### {operation}ed Message:", result_text)
 
