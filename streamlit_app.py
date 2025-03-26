@@ -1,6 +1,6 @@
 import streamlit as st
  
- def vigenere_encrypt(plaintext: str, key: str, alphabet: str) -> str:
+def vigenere_encrypt(plaintext: str, key: str, alphabet: str) -> str:
      if not alphabet:
          raise ValueError("Alphabet cannot be empty")
      if len(set(alphabet)) != len(alphabet):
