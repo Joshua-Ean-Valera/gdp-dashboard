@@ -47,59 +47,44 @@ def caesar_encrypt_decrypt(text, shift_keys, ifdecrypt):
     
     return ''.join(result)
 
-def encrypt_decrypt(text, key, operation):
-    if len(key) != 8:
-        return "Error: Key must be exactly 8 characters"
-    if operation == 'encrypt':
-        return encrypt(text, key)
-    elif operation == 'decrypt':
-        return decrypt(text, key)
-    else:
-        return "Error: Invalid operation. Use 'encrypt' or 'decrypt'"
+def primitive_root(g, n):
+    req_set = {num for num in range(1, n)}
+    gen_set = {pow(g, power, n) for power in range(1, n)}
+    return req_set == gen_set
 
-def encrypt(text, key):
-    text = pad_message(text)
-    result = []
-    
-    for i in range(0, len(text), 8):
-        block = text[i:i+8]
-        encrypted_block = xor_operation(block, key)
-        result.extend(encrypted_block)
-    
-    return ' '.join(format(byte, '02X') for byte in result)
+def find_primitive_roots(n):
+    pri_roots = []
+    for g in range(1, n):
+        if primitive_root(g, n):
+            pri_roots.append(g)
+    return pri_roots
 
-def decrypt(hex_text, key):
-    try:
-        hex_values = [int(h, 16) for h in hex_text.split()]
-    except ValueError:
-        return "Error: Invalid hex input for decryption"
-        
-    result = []
-    for i in range(0, len(hex_values), 8):
-        block = hex_values[i:i+8]
-        decrypted_block = ''.join(chr(b ^ ord(k)) for b, k in zip(block, key))
-        result.append(decrypted_block)
-        
-    return remove_padding(''.join(result))
-
-def pad_message(message, block_size=8, padding_char='_'):
-    padding_length = (block_size - len(message) % block_size) % block_size
-    return message + (padding_char * padding_length)
-
-def remove_padding(message, padding_char='_'):
-    return message.rstrip(padding_char)
-
-def xor_operation(block, key):
-    return [ord(b) ^ ord(k) for b, k in zip(block, key)]
+def print_mod_expo(n):
+    pri_roots = find_primitive_roots(n)
+    results = []
+    for g in range(1, n):
+        result_list = []
+        value = 1
+        for power in range(1, n):
+            value = pow(g, power, n)
+            result_list.append(f"{g}^{power} mod {n} = {value}")
+            if value == 1 and power < n - 1:
+                break
+        result_str = ", ".join(result_list)
+        if g in pri_roots:
+            results.append(f"{result_str} ==> {g} is primitive root of {n}")
+        else:
+            results.append(f"{result_str}")
+    return pri_roots, results
 
 # Streamlit UI
-st.title("Cipher Encryption Tool")
+st.title("Encryption & Primitive Root Tool")
 
-cipher_choice = st.sidebar.radio("Choose Encryption Method:", ["Vigenère Cipher", "Caesar Cipher", "Primitive Root", "XOR Encryption"])
+cipher_choice = st.sidebar.radio("Choose Method:", ["Vigenère Cipher", "Caesar Cipher", "Primitive Root Calculation"])
 
 if cipher_choice == "Vigenère Cipher":
     st.header("Vigenère Cipher Encryption")
-    alphabet = st.text_input("Enter Alphabet:", "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+    alphabet = st.text_input("Enter Alphabet:")
     key = st.text_input("Enter Key:")
     plaintext = st.text_input("Enter Plaintext:")
     if st.button("Encrypt"):
@@ -121,11 +106,19 @@ elif cipher_choice == "Caesar Cipher":
             result_text = caesar_encrypt_decrypt(text, shift_keys, ifdecrypt=(operation == "Decrypt"))
             st.write(f"### {operation}ed Message:", result_text)
 
-elif cipher_choice == "XOR Encryption":
-    st.header("XOR Encryption")
-    text = st.text_input("Enter Text:")
-    key = st.text_input("Enter 8-character Key:")
-    operation = st.radio("Choose Operation:", ["Encrypt", "Decrypt"])
-    if st.button("Process"):
-        result = encrypt_decrypt(text, key, operation.lower())
-        st.write(f"### {operation}ed Message:", result)
+elif cipher_choice == "Primitive Root Calculation":
+    st.header("Primitive Root Calculation")
+    n = st.number_input("Enter Prime Number:", min_value=2, step=1)
+    g = st.number_input("Enter Possible Primitive Root:", min_value=1, step=1)
+    if st.button("Check"):
+        if n < 2 or any(n % i == 0 for i in range(2, int(n ** 0.5) + 1)):
+            st.write(f"{n} is not a prime number!!")
+        else:
+            pri_roots, results = print_mod_expo(n)
+            for res in results:
+                st.write(res)
+            is_g_primitive = g in pri_roots
+            if is_g_primitive:
+                st.write(f"{g} is a primitive root of {n}. List of Primitive Roots: {pri_roots}")
+            else:
+                st.write(f"{g} is NOT a primitive root of {n}. List of Primitive Roots: {pri_roots}")
